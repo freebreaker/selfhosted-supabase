@@ -14,5 +14,12 @@ COPY . .
 # Build the project
 RUN npm run build
 
-# Entrypoint for MCP server
+# Expose port 8081 for HTTP mode
+EXPOSE 8081
+
+# Set environment variable for HTTP mode
+ENV TRANSPORT=http
+ENV PORT=8081
+
+# Entrypoint for MCP server in HTTP mode
 ENTRYPOINT ["node", "dist/index.js"]
