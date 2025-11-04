@@ -1,5 +1,6 @@
 # Self-Hosted Supabase MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@freebreaker/selfhosted-supabase)](https://smithery.ai/server/@freebreaker/selfhosted-supabase)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![smithery badge](https://smithery.ai/badge/@HenkDz/selfhosted-supabase-mcp)](https://smithery.ai/server/@HenkDz/selfhosted-supabase-mcp)
 
@@ -258,4 +259,4 @@ Consult the specific documentation for each client on where to place the `mcp.js
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details. 
+This project is licensed under the MIT License. See the LICENSE file for details.
