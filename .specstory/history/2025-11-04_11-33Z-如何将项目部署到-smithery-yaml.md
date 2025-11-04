@@ -2238,3 +2238,197 @@ npm run start:stdio
 
 ---
 
+_**User (2025-11-04 13:41Z)**_
+
+报错[22:22:48] Starting server scan
+[22:22:48] Waking up server...
+[22:22:48] Server is ready
+[22:22:54] Setting up authentication...
+[22:22:54] No test config found, using best guess
+[22:22:54] Inspecting server capabilities...
+[22:22:54] Scanning MCP capabilities...
+[22:22:54] OAuth check result: {"requiresOAuth":false,"oauthCheckOk":false}
+[22:22:54] Discovered .well-known/mcp-config schema: {"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"/.well-known/mcp-config","title":"MCP Session Configuration","description":"Schema for the /mcp endpoint configuration","x-query-style":"dot+bracket","type":"object","required":["supabaseUrl","supabaseAnonKey"],"properties":{"supabaseUrl":{"type":"string","description":"Self-hosted Supabase HTTP URL"},"supabaseAnonKey":{"type":"string","description":"Supabase anonymous key"},"supabaseServiceRoleKey":{"type":"string","description":"Supabase service role key (optional)"},"databaseUrl":{"type":"string","description":"Direct PostgreSQL connection string (optional)"},"supabaseAuthJwtSecret":{"type":"string","description":"Supabase JWT secret (optional)"},"toolsConfig":{"type":"string","description":"Path to tools config JSON (optional)"}}}
+[22:22:54] Generated dummy config: {"supabaseUrl":"string","supabaseAnonKey":"string"}
+[22:22:54] Final gateway MCP URL with dummy config: https://server.smithery.ai/@freebreaker/selfhosted-supabase/mcp?api_key=***&profile=still-tapir-mVRmut&supabaseUrl=string&supabaseAnonKey=string
+[22:22:54] HTTP POST → 500 Internal Server Error (159ms)
+{"jsonrpc":"2.0","error":{"code":-32603,"message":"Internal server error"},"id":null}
+[22:22:54] Request: {"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smithery-scanner","version":"1.0.0"}},"jsonrpc":"2.0","id":0}
+[22:22:56] HTTP POST → 500 Internal Server Error (542ms)
+{"jsonrpc":"2.0","error":{"code":-32603,"message":"Internal server error"},"id":null}
+[22:22:56] Request: {"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smithery-scanner","version":"1.0.0"}},"jsonrpc":"2.0","id":0}
+[22:22:58] HTTP POST → 500 Internal Server Error (609ms)
+{"jsonrpc":"2.0","error":{"code":-32603,"message":"Internal server error"},"id":null}
+[22:22:58] Request: {"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smithery-scanner","version":"1.0.0"}},"jsonrpc":"2.0","id":0}
+[22:22:58] Saving discovered config schema
+[22:22:59] Scan failed: {"type":"initializeFailed","configSchemaResult":{"ok":true,"value":{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"/.well-known/mcp-config","title":"MCP Session Configuration","description":"Schema for the /mcp endpoint configuration","x-query-style":"dot+bracket","type":"object","required":["supabaseUrl","supabaseAnonKey"],"properties":{"supabaseUrl":{"type":"string","description":"Self-hosted Supabase HTTP URL"},"supabaseAnonKey":{"type":"string","description":"Supabase anonymous key"},"supabaseServiceRoleKey":{"type":"string","description":"Supabase service role key (optional)"},"databaseUrl":{"type":"string","description":"Direct PostgreSQL connection string (optional)"},"supabaseAuthJwtSecret":{"type":"string","description":"Supabase JWT secret (optional)"},"toolsConfig":{"type":"string","description":"Path to tools config JSON (optional)"}}}},"requiresOAuth":false,"cause":{}}
+
+---
+
+_**Assistant (claude-4-opus-thinking)**_
+
+<think><details><summary>Thought Process</summary>用户遇到了一个 500 Internal Server Error，服务器在处理 initialize 请求时失败了。看起来是 Smithery 正在扫描服务器，但服务器在初始化时出现了内部错误。
+
+从日志来看：
+1. 服务器启动成功，可以访问
+2. 配置 schema 被正确检测到
+3. 但是当发送 initialize 请求时，返回 500 错误
+
+这很可能是因为：
+1. 使用了假的配置值 "string" 作为 supabaseUrl 和 supabaseAnonKey
+2. 在创建 Supabase 客户端时，这些假值导致了错误
+3. 我们需要在代码中添加更好的错误处理，或者在初始化失败时提供更友好的错误信息
+
+让我检查一下当前的代码，看看问题可能出现在哪里。</details></think>
+
+---
+
+看到错误了！问题是 Smithery 在扫描服务器时使用了假的配置值（`"string"`），但我们的代码在尝试创建 Supabase 客户端时会失败。让我们修复这个问题，添加更好的错误处理。
+
+---
+
+Tool use: **todo_write**
+
+## Todo List
+
+- [-] 修复初始化错误，添加更好的错误处理
+- [ ] 处理Smithery扫描时的假配置值
+
+---
+
+Tool use: **read_file**
+
+Read file: /Users/freebreaker/Downloads/selfhosted-supabase-mcp-main/src/index.ts
+
+---
+
+<think><details><summary>Thought Process</summary>我看到问题了！当 Smithery 扫描服务器时，它使用假的配置值 `"string"` 作为 supabaseUrl 和 supabaseAnonKey。但是在我们的 `createMcpServer` 函数中，我们直接尝试创建 SelfhostedSupabaseClient，这会因为无效的 URL 而失败。
+
+我需要：
+1. 在创建 SelfhostedSupabaseClient 之前检查配置是否有效
+2. 如果配置无效（比如是假值），应该跳过客户端创建，或者创建一个模拟的客户端
+3. 添加更好的错误处理，确保即使 Supabase 客户端创建失败，MCP 服务器仍然可以响应基本的请求
+
+让我修复这个问题。</details></think>
+
+---
+
+Tool use: **MultiEdit**
+
+
+<details><summary>Edit file: /Users/freebreaker/Downloads/selfhosted-supabase-mcp-main/src/index.ts</summary>
+
+**Chunk 1**
+Lines added: 25, lines removed: 9
+
+```diff
+@@ -83,13 +83,29 @@
+      console.error('Initializing Self-Hosted Supabase MCP Server...');
+  
+-     const selfhostedClient = await SelfhostedSupabaseClient.create({
+-         supabaseUrl: config.supabaseUrl,
+-         supabaseAnonKey: config.supabaseAnonKey,
+-         supabaseServiceRoleKey: config.supabaseServiceRoleKey,
+-         databaseUrl: config.databaseUrl,
+-         jwtSecret: config.jwtSecret,
+-     });
+- 
+-     console.error('Supabase client initialized successfully.');
++     // Check if this is a dummy/test configuration (used by Smithery scanner)
++     const isDummyConfig = config.supabaseUrl === 'string' || config.supabaseAnonKey === 'string' ||
++                          config.supabaseUrl.includes('example') || config.supabaseAnonKey.includes('example');
++     
++     let selfhostedClient: any = null;
++     
++     if (!isDummyConfig) {
++         try {
++             // Only create real client with valid configuration
++             selfhostedClient = await SelfhostedSupabaseClient.create({
++                 supabaseUrl: config.supabaseUrl,
++                 supabaseAnonKey: config.supabaseAnonKey,
++                 supabaseServiceRoleKey: config.supabaseServiceRoleKey,
++                 databaseUrl: config.databaseUrl,
++                 jwtSecret: config.jwtSecret,
++             });
++             console.error('Supabase client initialized successfully.');
++         } catch (error) {
++             console.error('Failed to initialize Supabase client:', error);
++             // Continue without client for now, tools will handle the error
++             selfhostedClient = null;
++         }
++     } else {
++         console.error('Dummy configuration detected, skipping Supabase client initialization.');
++     }
+  
+      const availableTools = {
+```
+
+**Chunk 2**
+Lines added: 11, lines removed: undefined
+
+```diff
+@@ -221,4 +237,15 @@
+                  parsedArgs = (tool.inputSchema as z.ZodTypeAny).parse(request.params.arguments);
+              }
++ 
++             // Check if we have a valid client before executing tools
++             if (!selfhostedClient) {
++                 return {
++                     content: [{ 
++                         type: 'text', 
++                         text: 'Supabase client not initialized. Please ensure valid configuration is provided.' 
++                     }],
++                     isError: true,
++                 };
++             }
+  
+              const context: ToolContext = {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>好的，我已经修复了主要问题：
+
+1. 添加了对假配置的检测 - 当 Smithery 扫描时使用的 "string" 值会被检测到
+2. 只有在有效配置时才创建 Supabase 客户端
+3. 添加了错误处理，即使客户端创建失败也能继续
+4. 在工具执行时检查客户端是否可用
+
+现在让我检查是否有其他需要修复的地方。</details></think>
+
+---
+
+Tool use: **todo_write**
+
+## Todo List
+
+- [x] 修复初始化错误，添加更好的错误处理
+- [x] 处理Smithery扫描时的假配置值
+
+---
+
+Tool use: **read_lints**
+
+<details>
+          <summary>Read lints for 1 file</summary>
+      
+Lint paths:
+
+- `/Users/freebreaker/Downloads/selfhosted-supabase-mcp-main/src/index.ts`
+
+Lint results
+
+
+**No lint errors found**
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>太好了！没有 linter 错误。现在让我验证一下修复是否正确，看看是否需要进一步的改进。让我检查一下整个代码流程是否合理。
+
+主</details></think>
+
+---
+

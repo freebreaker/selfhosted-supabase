@@ -82,15 +82,31 @@ async function createMcpServer(config: {
 }) {
     console.error('Initializing Self-Hosted Supabase MCP Server...');
 
-    const selfhostedClient = await SelfhostedSupabaseClient.create({
-        supabaseUrl: config.supabaseUrl,
-        supabaseAnonKey: config.supabaseAnonKey,
-        supabaseServiceRoleKey: config.supabaseServiceRoleKey,
-        databaseUrl: config.databaseUrl,
-        jwtSecret: config.jwtSecret,
-    });
-
-    console.error('Supabase client initialized successfully.');
+    // Check if this is a dummy/test configuration (used by Smithery scanner)
+    const isDummyConfig = config.supabaseUrl === 'string' || config.supabaseAnonKey === 'string' ||
+                         config.supabaseUrl.includes('example') || config.supabaseAnonKey.includes('example');
+    
+    let selfhostedClient: any = null;
+    
+    if (!isDummyConfig) {
+        try {
+            // Only create real client with valid configuration
+            selfhostedClient = await SelfhostedSupabaseClient.create({
+                supabaseUrl: config.supabaseUrl,
+                supabaseAnonKey: config.supabaseAnonKey,
+                supabaseServiceRoleKey: config.supabaseServiceRoleKey,
+                databaseUrl: config.databaseUrl,
+                jwtSecret: config.jwtSecret,
+            });
+            console.error('Supabase client initialized successfully.');
+        } catch (error) {
+            console.error('Failed to initialize Supabase client:', error);
+            // Continue without client for now, tools will handle the error
+            selfhostedClient = null;
+        }
+    } else {
+        console.error('Dummy configuration detected, skipping Supabase client initialization.');
+    }
 
     const availableTools = {
         [listTablesTool.name]: listTablesTool as AppTool,
@@ -221,6 +237,17 @@ async function createMcpServer(config: {
                 parsedArgs = (tool.inputSchema as z.ZodTypeAny).parse(request.params.arguments);
             }
 
+            // Check if we have a valid client before executing tools
+            if (!selfhostedClient) {
+                return {
+                    content: [{ 
+                        type: 'text', 
+                        text: 'Supabase client not initialized. Please ensure valid configuration is provided.' 
+                    }],
+                    isError: true,
+                };
+            }
+
             const context: ToolContext = {
                 selfhostedClient,
                 workspacePath: config.workspacePath || process.cwd(),
@@ -273,15 +300,18 @@ app.all('/mcp', async (req: Request, res: Response) => {
             toolsConfig: req.query.toolsConfig as string,
         };
 
-        // Validate required parameters
-        if (!config.supabaseUrl) {
+        // Validate required parameters (but allow dummy config for Smithery scanner)
+        const isDummyConfig = config.supabaseUrl === 'string' || config.supabaseAnonKey === 'string' ||
+                             config.supabaseUrl?.includes('example') || config.supabaseAnonKey?.includes('example');
+                             
+        if (!config.supabaseUrl && !isDummyConfig) {
             return res.status(400).json({
                 jsonrpc: '2.0',
                 error: { code: -32602, message: 'Missing required parameter: supabaseUrl' },
                 id: null,
             });
         }
-        if (!config.supabaseAnonKey) {
+        if (!config.supabaseAnonKey && !isDummyConfig) {
             return res.status(400).json({
                 jsonrpc: '2.0',
                 error: { code: -32602, message: 'Missing required parameter: supabaseAnonKey' },
